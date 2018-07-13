@@ -10,9 +10,18 @@ import UIKit
 
 class TextfieldView: UIView {
     
+    var shouldAnimate: Bool = false
+    
     var isTextValid: Bool? {
         didSet {
-            animateBorder(isValid: isTextValid)
+            guard let isValid = isTextValid else { return }
+            let color = isValid ? UIColor.green : UIColor.red
+
+            if shouldAnimate {
+                animateBorder(color: color)
+            } else {
+                animateStrokeColor(color: color)
+            }
         }
     }
     
@@ -44,7 +53,6 @@ class TextfieldView: UIView {
     
     var setBorderColor: UIColor = UIColor.blue {
         didSet {
-            //self.innerView.layer.borderColor = setBorderColor.cgColor
             innerViewShapeLayer.strokeColor = setBorderColor.cgColor
         }
     }
@@ -71,9 +79,6 @@ class TextfieldView: UIView {
     private lazy var innerView: UIView = {
         let temp = UIView(frame: CGRect(x: 10.0, y: 10.0, width: frame.width - 20.0, height: frame.height - 20.0))
         temp.backgroundColor = UIColor.clear
-        //    temp.layer.cornerRadius = 10.0
-    //    temp.layer.borderColor = setBorderColor.cgColor
-     //   temp.layer.borderWidth = 2.0
         addSubview(temp)
         temp.translatesAutoresizingMaskIntoConstraints = false
         temp.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 10.0).isActive = true
@@ -90,7 +95,7 @@ class TextfieldView: UIView {
         shapeLayer.strokeColor = setBorderColor.cgColor
         shapeLayer.strokeEnd = 1.0
         shapeLayer.lineCap = kCALineCapRound
-        shapeLayer.lineWidth = 2.0
+        shapeLayer.lineWidth = 3.0
         shapeLayer.frame = innerView.bounds
         return shapeLayer
     }()
@@ -109,19 +114,33 @@ class TextfieldView: UIView {
         return temp
     }()
     
-    private func animateBorder(isValid: Bool?) {
-        guard let isValid = isValid else { return }
-
-        let color = isValid ? UIColor.green : UIColor.red
-        innerViewShapeLayer.strokeEnd = 0
-        innerViewShapeLayer.strokeColor = color.cgColor
+    private func strokeAnimation(isForawrd: Bool) -> CABasicAnimation {
         let animation = CABasicAnimation(keyPath: "strokeEnd")
-        animation.duration = 3.0
-        animation.fromValue = 0
-        animation.toValue = 1.0
+        animation.duration = 1.0
+        animation.fromValue = isForawrd ? 0 : 1.0
+        animation.toValue = isForawrd ? 1.0 : 0
         animation.fillMode = kCAFillModeForwards
         animation.isRemovedOnCompletion = false
-        innerViewShapeLayer.add(animation, forKey: "strokeEnd")
+        return animation
+    }
+    
+    private func animateBorder(color: UIColor) {
+        CATransaction.begin()
+        CATransaction.setCompletionBlock { [unowned self] in
+
+            self.innerViewShapeLayer.strokeColor = color.cgColor
+            let animation = self.strokeAnimation(isForawrd: true)
+            self.innerViewShapeLayer.add(animation, forKey: "strokeEndForward")
+            
+        }
+        
+        let animation = strokeAnimation(isForawrd: false)
+        innerViewShapeLayer.add(animation, forKey: "strokeEndBack")
+        CATransaction.commit()
+    }
+    
+    func animateStrokeColor(color: UIColor) {
+        innerViewShapeLayer.strokeColor = color.cgColor
     }
     
     override init(frame: CGRect) {
